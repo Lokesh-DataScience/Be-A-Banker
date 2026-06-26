@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: ./backend
+    container_name: banker_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app          # live code reload
+      - banker_db:/app/data     # persist SQLite file
+    environment:
+      - DATABASE_URL=sqlite:///./data/banker.db
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: banker_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules       # don't overwrite node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  banker_db:

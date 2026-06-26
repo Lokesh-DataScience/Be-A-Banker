@@ -1,0 +1,6 @@
+{
+  "name": "Be A Banker",
+  "description": "Your Personalized Banking Exam Study Habit Tracker with daily routines, consistency heatmaps, study streaks, robust habit stats, and an interactive AI Habits Coach.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
