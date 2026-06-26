@@ -11,14 +11,47 @@ import DailyRoutine from './components/DailyRoutine';
 import PerformanceAnalytics from './components/PerformanceAnalytics';
 import GamificationBadges from './components/GamificationBadges';
 
+// ── Environment variable for API URL ───────────────────────────────────────
+
+const API_URL = import.meta.env.VITE_API_URL;
+
 // ── API helpers ──────────────────────────────────────────────────────────────
 
 const api = {
-  get:    (url: string) => fetch(url).then(r => r.json()),
-  post:   (url: string, body: unknown) => fetch(url, { method: 'POST',   headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()),
-  put:    (url: string, body: unknown) => fetch(url, { method: 'PUT',    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()),
-  patch:  (url: string, body: unknown) => fetch(url, { method: 'PATCH',  headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()),
-  delete: (url: string)               => fetch(url, { method: 'DELETE' }),
+  get: (url: string) =>
+    fetch(`${API_URL}${url}`).then(r => r.json()),
+
+  post: (url: string, body: unknown) =>
+    fetch(`${API_URL}${url}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }).then(r => r.json()),
+
+  put: (url: string, body: unknown) =>
+    fetch(`${API_URL}${url}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }).then(r => r.json()),
+
+  patch: (url: string, body: unknown) =>
+    fetch(`${API_URL}${url}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }).then(r => r.json()),
+
+  delete: (url: string) =>
+    fetch(`${API_URL}${url}`, {
+      method: 'DELETE',
+    }),
 };
 
 // ── Default values (used only while API loads or on first boot) ──────────────
