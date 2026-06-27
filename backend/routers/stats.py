@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from database import get_db, UserStatsModel
+from database import get_db, UserStatsModel, UserModel
+from dependencies import get_current_user
 from schemas import UserStats
 
 router = APIRouter()
@@ -8,9 +9,7 @@ router = APIRouter()
 
 def _row_to_schema(row: UserStatsModel) -> UserStats:
     return UserStats(
-        xp=row.xp,
-        level=row.level,
-        streak=row.streak,
+        xp=row.xp, level=row.level, streak=row.streak,
         streakHistory=row.streak_history or [],
         dailyStudyHoursGoal=row.daily_study_hours_goal,
         weeklyPracticeHoursGoal=row.weekly_practice_hours_goal,
@@ -22,11 +21,13 @@ def _row_to_schema(row: UserStatsModel) -> UserStats:
 
 
 @router.get("", response_model=UserStats)
-def get_stats(db: Session = Depends(get_db)):
-    row = db.query(UserStatsModel).filter_by(id=1).first()
+def get_stats(
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    row = db.query(UserStatsModel).filter_by(user_id=current_user.id).first()
     if not row:
-        # Auto-create default stats on first request
-        row = UserStatsModel(id=1)
+        row = UserStatsModel(id=current_user.id, user_id=current_user.id)
         db.add(row)
         db.commit()
         db.refresh(row)
@@ -34,22 +35,26 @@ def get_stats(db: Session = Depends(get_db)):
 
 
 @router.put("", response_model=UserStats)
-def update_stats(body: UserStats, db: Session = Depends(get_db)):
-    row = db.query(UserStatsModel).filter_by(id=1).first()
+def update_stats(
+    body: UserStats,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    row = db.query(UserStatsModel).filter_by(user_id=current_user.id).first()
     if not row:
-        row = UserStatsModel(id=1)
+        row = UserStatsModel(id=current_user.id, user_id=current_user.id)
         db.add(row)
 
-    row.xp                          = body.xp
-    row.level                       = body.level
-    row.streak                      = body.streak
-    row.streak_history              = body.streakHistory
-    row.daily_study_hours_goal      = body.dailyStudyHoursGoal
-    row.weekly_practice_hours_goal  = body.weeklyPracticeHoursGoal
-    row.monthly_mock_tests_goal     = body.monthlyMockTestsGoal
-    row.target_exam_score           = body.targetExamScore
-    row.preferred_theme             = body.preferredTheme
-    row.accent_color                = body.accentColor
+    row.xp                         = body.xp
+    row.level                      = body.level
+    row.streak                     = body.streak
+    row.streak_history             = body.streakHistory
+    row.daily_study_hours_goal     = body.dailyStudyHoursGoal
+    row.weekly_practice_hours_goal = body.weeklyPracticeHoursGoal
+    row.monthly_mock_tests_goal    = body.monthlyMockTestsGoal
+    row.target_exam_score          = body.targetExamScore
+    row.preferred_theme            = body.preferredTheme
+    row.accent_color               = body.accentColor
 
     db.commit()
     db.refresh(row)

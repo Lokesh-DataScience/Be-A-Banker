@@ -1,58 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Building2, LayoutDashboard, Calendar, Award, BarChart3, Sparkles, Sun, Moon,
+  Building2, LayoutDashboard, Calendar, Award, BarChart3, Sparkles, Sun, Moon, LogOut,
 } from 'lucide-react';
 
 import { StudyLog, UserStats, PlannerDay, AttemptResult, Achievement, Habit } from './types';
 import { INITIAL_ACHIEVEMENTS, INITIAL_HABITS } from './data';
+import { api } from './api';
+import { useAuth } from './auth/AuthProvider';
+import AuthPage from './pages/AuthPage';
 
 import Dashboard from './components/Dashboard';
 import DailyRoutine from './components/DailyRoutine';
 import PerformanceAnalytics from './components/PerformanceAnalytics';
 import GamificationBadges from './components/GamificationBadges';
-
-// ── Environment variable for API URL ───────────────────────────────────────
-
-const API_URL = import.meta.env.VITE_API_URL;
-
-// ── API helpers ──────────────────────────────────────────────────────────────
-
-const api = {
-  get: (url: string) =>
-    fetch(`${API_URL}${url}`).then(r => r.json()),
-
-  post: (url: string, body: unknown) =>
-    fetch(`${API_URL}${url}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    }).then(r => r.json()),
-
-  put: (url: string, body: unknown) =>
-    fetch(`${API_URL}${url}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    }).then(r => r.json()),
-
-  patch: (url: string, body: unknown) =>
-    fetch(`${API_URL}${url}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    }).then(r => r.json()),
-
-  delete: (url: string) =>
-    fetch(`${API_URL}${url}`, {
-      method: 'DELETE',
-    }),
-};
 
 // ── Default values (used only while API loads or on first boot) ──────────────
 
@@ -66,6 +26,21 @@ const DEFAULT_STATS: UserStats = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { session, user, loading: authLoading, signOut } = useAuth();
+
+  // ── Auth gate ─────────────────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Building2 className="w-10 h-10 text-indigo-400 animate-pulse mx-auto mb-4" />
+          <p className="text-slate-400 text-sm font-mono">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) return <AuthPage />;
   const [loading, setLoading]         = useState(true);
   const [logs, setLogs]               = useState<StudyLog[]>([]);
   const [stats, setStats]             = useState<UserStats>(DEFAULT_STATS);
@@ -284,6 +259,18 @@ export default function App() {
             <div className="flex items-center gap-1 text-xs">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span className="text-slate-350 font-semibold font-mono">{stats.xp} XP</span>
+            </div>
+
+            {/* User + sign out */}
+            <div className="flex items-center gap-2 border-l border-slate-700/50 pl-3">
+              <span className="text-xs text-slate-400 hidden sm:block truncate max-w-[120px]">{user?.email}</span>
+              <button
+                onClick={signOut}
+                title="Sign out"
+                className="text-slate-400 hover:text-red-400 transition"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
 
           </div>

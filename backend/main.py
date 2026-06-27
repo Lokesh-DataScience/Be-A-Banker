@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -5,7 +7,9 @@ import uvicorn
 
 from database import init_db
 from routers import stats, logs, habits, planner, attempts
+from dotenv import load_dotenv
 
+load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
