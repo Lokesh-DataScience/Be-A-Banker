@@ -27,7 +27,7 @@ const DEFAULT_STATS: UserStats = {
 // ── AppShell — only renders when session exists ───────────────────────────────
 
 function AppShell() {
-  const { user, signOut } = useAuth();
+  const { user, session, signOut } = useAuth();
 
   const [loading,      setLoading]      = useState(true);
   const [logs,         setLogs]         = useState<StudyLog[]>([]);
@@ -43,6 +43,8 @@ function AppShell() {
 
   // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!session) return;  // wait until Supabase has restored the session
+
     async function bootstrap() {
       try {
         const [fetchedStats, fetchedLogs, fetchedHabits, fetchedPlanner, fetchedAttempts] =
@@ -86,7 +88,7 @@ function AppShell() {
       }
     }
     bootstrap();
-  }, []);
+  }, [session]);
 
   // ── Auto level-up ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -163,7 +165,7 @@ function AppShell() {
   const handleReset = useCallback(async () => {
     setResetting(true);
     try {
-      await api.post('/api/reset', {});
+      await api.reset();
 
       // Re-seed habits first, then update local state with the result
       const seeded = await Promise.all(
@@ -273,7 +275,7 @@ function AppShell() {
 
             {/* User + settings + sign out */}
             <div className="flex items-center gap-2 border-l border-slate-700/50 pl-3">
-              <span className="text-xs text-slate-400 hidden sm:block truncate max-w-35">{user?.email}</span>
+              <span className="text-xs text-slate-400 hidden sm:block truncate max-w-[140px]">{user?.email}</span>
               <button onClick={() => { setShowSettings(true); setResetConfirm(false); }} title="Settings" className="text-slate-400 hover:text-slate-200 transition">
                 <Settings className="w-4 h-4" />
               </button>
