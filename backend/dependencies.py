@@ -1,74 +1,78 @@
 import os
-import jwt
+import json
+import base64
+import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from database import get_db, UserModel
 
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 SUPABASE_URL        = os.getenv("SUPABASE_URL", "")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 
 bearer_scheme = HTTPBearer()
 
-# Lazily created JWKS client for RS256
-_jwks_client = None
 
-def _get_jwks_client():
-    global _jwks_client
-    if _jwks_client is None:
-        jwks_url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
-        _jwks_client = jwt.PyJWKClient(jwks_url, cache_keys=True)
-    return _jwks_client
+def _b64_decode(s: str) -> bytes:
+    """Base64url decode with padding fix."""
+    s += "=" * (-len(s) % 4)
+    return base64.urlsafe_b64decode(s)
 
 
-def _decode_token(token: str) -> dict:
-    # Step 1: peek at header without verifying
+def _get_payload_unverified(token: str) -> dict:
+    """Decode JWT payload without signature verification."""
     try:
-        header = jwt.get_unverified_header(token)
+        parts = token.split(".")
+        if len(parts) != 3:
+            raise ValueError("Not a valid JWT")
+        return json.loads(_b64_decode(parts[1]))
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Malformed token header: {e}")
+        raise HTTPException(status_code=401, detail=f"Malformed token: {e}")
 
-    alg = header.get("alg", "HS256")
 
-    # Step 2: verify based on algorithm
+def _verify_with_supabase(token: str) -> dict:
+    """
+    Verify token by calling Supabase's /auth/v1/user endpoint.
+    Supabase validates the token server-side — no algorithm issues.
+    """
+    if not SUPABASE_URL:
+        raise HTTPException(status_code=500, detail="SUPABASE_URL not configured.")
+
     try:
-        if alg == "HS256":
-            return jwt.decode(
-                token,
-                SUPABASE_JWT_SECRET,
-                algorithms=["HS256"],
-                options={"verify_aud": False},
-            )
-        else:
-            # RS256 — fetch public key from Supabase JWKS endpoint
-            signing_key = _get_jwks_client().get_signing_key_from_jwt(token)
-            return jwt.decode(
-                token,
-                signing_key.key,
-                algorithms=["RS256"],
-                options={"verify_aud": False},
-            )
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired.")
-    except jwt.InvalidTokenError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+        resp = httpx.get(
+            f"{SUPABASE_URL}/auth/v1/user",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "apikey": os.getenv("SUPABASE_ANON_KEY", ""),
+            },
+            timeout=10,
+        )
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Token verification failed: {e}")
+        raise HTTPException(status_code=401, detail=f"Token verification request failed: {e}")
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid or expired token.")
+
+    return resp.json()   # returns Supabase user object
 
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> UserModel:
-    payload = _decode_token(credentials.credentials)
+    token = credentials.credentials
 
-    user_id = payload.get("sub")
-    email   = payload.get("email", "")
-    name    = (payload.get("user_metadata") or {}).get("full_name") or email.split("@")[0]
+    # Verify token via Supabase — handles HS256, RS256, anything
+    supabase_user = _verify_with_supabase(token)
+
+    user_id = supabase_user.get("id")
+    email   = supabase_user.get("email", "")
+    name    = (supabase_user.get("user_metadata") or {}).get("full_name") or email.split("@")[0]
 
     if not user_id:
-        raise HTTPException(status_code=401, detail="Token missing subject.")
+        raise HTTPException(status_code=401, detail="Could not identify user.")
 
+    # Auto-create user row on first login
     user = db.query(UserModel).filter_by(id=user_id).first()
     if not user:
         user = UserModel(id=user_id, name=name, email=email)
