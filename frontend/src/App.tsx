@@ -150,24 +150,9 @@ function AppShell() {
   }, []);
 
   const handleReset = useCallback(async () => {
-    await api.delete('/api/reset');
-    // Reset all local state to defaults
-    setLogs([]);
-    setStats(DEFAULT_STATS);
-    setPlanner([]);
-    setAttempts([]);
-    setAchievements(INITIAL_ACHIEVEMENTS);
-    // Re-seed habits from data.ts
-    const seeded = await Promise.all(
-      INITIAL_HABITS.map((h: Habit) => api.post('/api/habits', h))
-    );
-    setHabits(seeded);
-  }, []);
-
-  const handleReset = useCallback(async () => {
     setResetting(true);
     try {
-      await api.reset();
+      await api.post('/api/reset', {});
 
       // Re-seed habits first, then update local state with the result
       const seeded = await Promise.all(
@@ -251,9 +236,9 @@ function AppShell() {
 
             {/* Theme */}
             <div className="flex items-center gap-1.5 border-r border-slate-700/50 pr-3">
-              <Sun       onClick={() => handleUpdateStats({ preferredTheme: 'light' })}   className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'light'   ? 'text-amber-500'  : 'text-slate-400'}`} title="Light" />
-              <Moon      onClick={() => handleUpdateStats({ preferredTheme: 'dark' })}    className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'dark'    ? 'text-indigo-400' : 'text-slate-400'}`} title="Dark" />
-              <Building2 onClick={() => handleUpdateStats({ preferredTheme: 'banking' })} className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'banking' ? 'text-cyan-400'   : 'text-slate-400'}`} title="Banking Blue" />
+              <Sun       onClick={() => handleUpdateStats({ preferredTheme: 'light' })}   className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'light'   ? 'text-amber-500'  : 'text-slate-400'}`} aria-label="Light" />
+              <Moon      onClick={() => handleUpdateStats({ preferredTheme: 'dark' })}    className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'dark'    ? 'text-indigo-400' : 'text-slate-400'}`} aria-label="Dark" />
+              <Building2 onClick={() => handleUpdateStats({ preferredTheme: 'banking' })} className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'banking' ? 'text-cyan-400'   : 'text-slate-400'}`} aria-label="Banking Blue" />
             </div>
 
             {/* Accent */}
@@ -277,7 +262,7 @@ function AppShell() {
 
             {/* User + settings + sign out */}
             <div className="flex items-center gap-2 border-l border-slate-700/50 pl-3">
-              <span className="text-xs text-slate-400 hidden sm:block truncate max-w-[140px]">{user?.email}</span>
+              <span className="text-xs text-slate-400 hidden sm:block truncate max-w-35">{user?.email}</span>
               <button onClick={() => { setShowSettings(true); setResetConfirm(false); }} title="Settings" className="text-slate-400 hover:text-slate-200 transition">
                 <Settings className="w-4 h-4" />
               </button>
