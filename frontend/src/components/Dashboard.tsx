@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Flame, Clock, Award, BookOpen, Plus, ClipboardList, CheckCircle2, TrendingUp, Calendar, AlertCircle
+  Flame, Clock, Award, BookOpen, Plus, ClipboardList, CheckCircle2, TrendingUp, Calendar, AlertCircle, Trash2
 } from 'lucide-react';
 import { StudyLog, UserStats } from '../types';
 
@@ -9,15 +9,19 @@ interface DashboardProps {
   stats: UserStats;
   onAddLog: (log: Omit<StudyLog, 'id'>) => void;
   onUpdateStats: (newStats: Partial<UserStats>) => void;
+  onReset: () => Promise<void>;
 }
 
-export default function Dashboard({ logs, stats, onAddLog, onUpdateStats }: DashboardProps) {
+export default function Dashboard({ logs, stats, onAddLog, onUpdateStats, onReset }: DashboardProps) {
   const [showLogModal, setShowLogModal] = useState(false);
   const [logSubject, setLogSubject] = useState<'Quant' | 'Reasoning' | 'English'>('Quant');
   const [logTopic, setLogTopic] = useState('');
   const [logType, setLogType] = useState<'Video' | 'Practice' | 'Revision'>('Practice');
   const [logDuration, setLogDuration] = useState('30');
   const [errorMsg, setErrorMsg] = useState('');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetInput, setResetInput] = useState('');
 
   // Calculations
   const todayStr = new Date().toISOString().split('T')[0];
@@ -495,6 +499,76 @@ export default function Dashboard({ logs, stats, onAddLog, onUpdateStats }: Dash
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ── Danger Zone ──────────────────────────────────────────────────── */}
+      <div className="mt-12 border border-red-500/30 rounded-2xl p-6 bg-red-500/5">
+        <div className="flex items-center gap-2 mb-1">
+          <AlertCircle className="w-4 h-4 text-red-400" />
+          <h3 className="text-sm font-bold text-red-400 uppercase tracking-wider">Danger Zone</h3>
+        </div>
+        <p className="text-xs text-slate-400 mb-4">
+          Permanently deletes all your study logs, habits, planner tasks, mock test attempts, and resets XP to zero. This cannot be undone.
+        </p>
+        <button
+          onClick={() => { setShowResetConfirm(true); setResetInput(''); }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500/40 text-red-400 text-xs font-bold hover:bg-red-500/10 transition"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Reset All Data
+        </button>
+      </div>
+
+      {/* ── Reset Confirm Modal ──────────────────────────────────────────── */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-900 border border-red-500/40 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 rounded-lg bg-red-500/10">
+                <Trash2 className="w-4 h-4 text-red-400" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-100">Reset All Data</h3>
+            </div>
+
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              This will permanently delete <span className="text-red-400 font-semibold">everything</span> — logs, habits, planner, attempts, and XP. You cannot undo this.
+            </p>
+
+            <p className="text-xs text-slate-400 mb-2">
+              Type <span className="text-red-400 font-mono font-bold">RESET</span> to confirm:
+            </p>
+            <input
+              type="text"
+              value={resetInput}
+              onChange={e => setResetInput(e.target.value)}
+              placeholder="RESET"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500 mb-4 font-mono"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowResetConfirm(false); setResetInput(''); }}
+                className="flex-1 py-2 rounded-xl border border-slate-700 text-slate-400 text-xs font-bold hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={resetInput !== 'RESET' || resetLoading}
+                onClick={async () => {
+                  setResetLoading(true);
+                  await onReset();
+                  setResetLoading(false);
+                  setShowResetConfirm(false);
+                  setResetInput('');
+                }}
+                className="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition"
+              >
+                {resetLoading ? 'Resetting…' : 'Yes, Reset Everything'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}

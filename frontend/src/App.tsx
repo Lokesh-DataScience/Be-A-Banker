@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Building2, LayoutDashboard, Calendar, Award, BarChart3, Sparkles, Sun, Moon, LogOut,
+  Building2, LayoutDashboard, Calendar, Award, BarChart3, Sparkles, Sun, Moon,
+  LogOut, Settings, Trash2, X, AlertTriangle, Loader2,
 } from 'lucide-react';
 
 import { StudyLog, UserStats, PlannerDay, AttemptResult, Achievement, Habit } from './types';
@@ -14,7 +15,7 @@ import DailyRoutine from './components/DailyRoutine';
 import PerformanceAnalytics from './components/PerformanceAnalytics';
 import GamificationBadges from './components/GamificationBadges';
 
-// ── Default values (used only while API loads or on first boot) ──────────────
+// ── Default stats ────────────────────────────────────────────────────────────
 
 const DEFAULT_STATS: UserStats = {
   xp: 0, level: 'Beginner Banker', streak: 0, streakHistory: [],
@@ -23,34 +24,24 @@ const DEFAULT_STATS: UserStats = {
   preferredTheme: 'banking', accentColor: 'indigo',
 };
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── AppShell — only renders when session exists ───────────────────────────────
 
-export default function App() {
-  const { session, user, loading: authLoading, signOut } = useAuth();
+function AppShell() {
+  const { user, signOut } = useAuth();
 
-  // ── Auth gate ─────────────────────────────────────────────────────────────
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <Building2 className="w-10 h-10 text-indigo-400 animate-pulse mx-auto mb-4" />
-          <p className="text-slate-400 text-sm font-mono">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!session) return <AuthPage />;
-  const [loading, setLoading]         = useState(true);
-  const [logs, setLogs]               = useState<StudyLog[]>([]);
-  const [stats, setStats]             = useState<UserStats>(DEFAULT_STATS);
-  const [planner, setPlanner]         = useState<PlannerDay[]>([]);
-  const [attempts, setAttempts]       = useState<AttemptResult[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [logs,         setLogs]         = useState<StudyLog[]>([]);
+  const [stats,        setStats]        = useState<UserStats>(DEFAULT_STATS);
+  const [planner,      setPlanner]      = useState<PlannerDay[]>([]);
+  const [attempts,     setAttempts]     = useState<AttemptResult[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>(INITIAL_ACHIEVEMENTS);
-  const [habits, setHabits]           = useState<Habit[]>([]);
-  const [activeTab, setActiveTab]     = useState<'dashboard' | 'routine' | 'analytics' | 'milestones'>('dashboard');
+  const [habits,       setHabits]       = useState<Habit[]>([]);
+  const [activeTab,      setActiveTab]      = useState<'dashboard' | 'routine' | 'analytics' | 'milestones'>('dashboard');
+  const [showSettings,   setShowSettings]   = useState(false);
+  const [resetConfirm,   setResetConfirm]   = useState(false);
+  const [resetting,      setResetting]      = useState(false);
 
-  // ── Bootstrap: load everything from FastAPI on mount ──────────────────────
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
     async function bootstrap() {
       try {
@@ -68,7 +59,6 @@ export default function App() {
         setPlanner(fetchedPlanner);
         setAttempts(fetchedAttempts);
 
-        // Seed habits from data.ts on first boot (DB returns empty array)
         if (fetchedHabits.length === 0) {
           const seeded = await Promise.all(
             INITIAL_HABITS.map((h: Habit) => api.post('/api/habits', h))
@@ -78,7 +68,7 @@ export default function App() {
           setHabits(fetchedHabits);
         }
       } catch (err) {
-        console.error('Failed to load from API, falling back to defaults:', err);
+        console.error('Bootstrap failed:', err);
         setHabits(INITIAL_HABITS);
       } finally {
         setLoading(false);
@@ -87,98 +77,122 @@ export default function App() {
     bootstrap();
   }, []);
 
-  // ── Auto-level up based on XP ─────────────────────────────────────────────
+  // ── Auto level-up ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (loading) return;
-    let targetLevel: UserStats['level'] = 'Beginner Banker';
-    if (stats.xp >= 3000)      targetLevel = 'Future Banker';
-    else if (stats.xp >= 2005) targetLevel = 'Banking Expert';
-    else if (stats.xp >= 1200) targetLevel = 'Probationary Officer';
-    else if (stats.xp >= 500)  targetLevel = 'Clerk Aspirant';
-
-    if (stats.level !== targetLevel) {
-      handleUpdateStats({ level: targetLevel });
-      if (targetLevel === 'Probationary Officer') handleUnlockAchievement('ach-level-PO');
+    let level: UserStats['level'] = 'Beginner Banker';
+    if      (stats.xp >= 3000) level = 'Future Banker';
+    else if (stats.xp >= 2005) level = 'Banking Expert';
+    else if (stats.xp >= 1200) level = 'Probationary Officer';
+    else if (stats.xp >= 500)  level = 'Clerk Aspirant';
+    if (stats.level !== level) {
+      handleUpdateStats({ level });
+      if (level === 'Probationary Officer') handleUnlockAchievement('ach-level-PO');
     }
   }, [stats.xp, loading]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleUpdateStats = useCallback(async (partial: Partial<UserStats>) => {
     const updated = { ...stats, ...partial };
     setStats(updated);
-    try {
-      await api.put('/api/stats', updated);
-    } catch (err) {
-      console.error('Failed to save stats:', err);
-    }
+    try { await api.put('/api/stats', updated); }
+    catch (err) { console.error('Save stats failed:', err); }
   }, [stats]);
 
   const handleAddLog = useCallback(async (newLog: Omit<StudyLog, 'id'>) => {
     const log: StudyLog = { ...newLog, id: 'log-' + Date.now() };
     setLogs(prev => [log, ...prev]);
-    try {
-      await api.post('/api/logs', log);
-    } catch (err) {
-      console.error('Failed to save log:', err);
-    }
+    try { await api.post('/api/logs', log); }
+    catch (err) { console.error('Save log failed:', err); }
   }, []);
 
   const handleUpdateHabits = useCallback(async (updated: Habit[]) => {
     setHabits(updated);
-    // Find habits that changed completedDates and sync them
-    updated.forEach(async (h) => {
+    for (const h of updated) {
       const prev = habits.find(p => p.id === h.id);
       if (!prev) {
-        // New custom habit
         try { await api.post('/api/habits', h); } catch (e) { console.error(e); }
       } else if (JSON.stringify(prev.completedDates) !== JSON.stringify(h.completedDates)) {
         try { await api.patch(`/api/habits/${h.id}/complete`, { completedDates: h.completedDates }); } catch (e) { console.error(e); }
       }
-    });
-    // Handle deletions
-    habits.forEach(async (prev) => {
+    }
+    for (const prev of habits) {
       if (!updated.find(h => h.id === prev.id)) {
         try { await api.delete(`/api/habits/${prev.id}`); } catch (e) { console.error(e); }
       }
-    });
+    }
   }, [habits]);
 
   const handleUpdatePlanner = useCallback(async (updated: PlannerDay[]) => {
     setPlanner(updated);
     try {
-      await Promise.all(
-        updated.map(day => api.put(`/api/planner/${day.dayName}`, day))
-      );
-    } catch (err) {
-      console.error('Failed to save planner:', err);
-    }
+      await Promise.all(updated.map(day => api.put(`/api/planner/${day.dayName}`, day)));
+    } catch (err) { console.error('Save planner failed:', err); }
   }, []);
 
   const handleAddAttempt = useCallback(async (attempt: AttemptResult) => {
     setAttempts(prev => [attempt, ...prev]);
-    try {
-      await api.post('/api/attempts', attempt);
-    } catch (err) {
-      console.error('Failed to save attempt:', err);
-    }
-    if (attempt.score === attempt.totalQuestions && attempt.testTitle.includes('Sectional')) {
+    try { await api.post('/api/attempts', attempt); }
+    catch (err) { console.error('Save attempt failed:', err); }
+    if (attempt.score === attempt.totalQuestions && attempt.testTitle.includes('Sectional'))
       handleUnlockAchievement('ach-math-expert');
-    }
-    if (attempt.totalQuestions > 10) {
+    if (attempt.totalQuestions > 10)
       handleUnlockAchievement('ach-mock-pioneer');
-    }
   }, []);
 
   const handleUnlockAchievement = useCallback((id: string) => {
-    setAchievements(prev => prev.map(ach =>
-      ach.id === id && !ach.unlockedAt
-        ? { ...ach, unlockedAt: new Date().toISOString().split('T')[0] }
-        : ach
+    setAchievements(prev => prev.map(a =>
+      a.id === id && !a.unlockedAt
+        ? { ...a, unlockedAt: new Date().toISOString().split('T')[0] }
+        : a
     ));
   }, []);
 
-  // ── Theme helpers ─────────────────────────────────────────────────────────
+  const handleReset = useCallback(async () => {
+    await api.delete('/api/reset');
+    // Reset all local state to defaults
+    setLogs([]);
+    setStats(DEFAULT_STATS);
+    setPlanner([]);
+    setAttempts([]);
+    setAchievements(INITIAL_ACHIEVEMENTS);
+    // Re-seed habits from data.ts
+    const seeded = await Promise.all(
+      INITIAL_HABITS.map((h: Habit) => api.post('/api/habits', h))
+    );
+    setHabits(seeded);
+  }, []);
+
+  const handleReset = useCallback(async () => {
+    setResetting(true);
+    try {
+      await api.reset();
+
+      // Re-seed habits first, then update local state with the result
+      const seeded = await Promise.all(
+        INITIAL_HABITS.map((h: Habit) => api.post('/api/habits', h))
+      );
+
+      // Only update state after all API calls succeed
+      setLogs([]);
+      setStats(DEFAULT_STATS);
+      setPlanner([]);
+      setAttempts([]);
+      setHabits(seeded);
+      setAchievements(INITIAL_ACHIEVEMENTS);
+      setActiveTab('dashboard');
+      setResetConfirm(false);
+      setShowSettings(false);
+    } catch (err) {
+      console.error('Reset failed:', err);
+      alert('Reset failed. Please try again.');
+    } finally {
+      setResetting(false);
+    }
+  }, []);
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
 
   const getThemeClasses = () => {
     if (stats.preferredTheme === 'dark')    return 'bg-slate-950 text-slate-100 dark';
@@ -188,17 +202,17 @@ export default function App() {
 
   const getAccentClass = (type: 'bg' | 'text' | 'border' | 'hoverBg') => {
     const keys = {
-      indigo:  { bg: 'bg-indigo-600',  text: 'text-indigo-600 dark:text-indigo-400',  border: 'border-indigo-600',  hoverBg: 'hover:bg-indigo-700' },
-      cyan:    { bg: 'bg-cyan-600',    text: 'text-cyan-600 dark:text-cyan-400',      border: 'border-cyan-600',    hoverBg: 'hover:bg-cyan-700' },
-      rose:    { bg: 'bg-rose-600',    text: 'text-rose-600 dark:text-rose-450',      border: 'border-rose-600',    hoverBg: 'hover:bg-rose-700' },
-      violet:  { bg: 'bg-violet-600',  text: 'text-violet-600 dark:text-violet-400',  border: 'border-violet-600',  hoverBg: 'hover:bg-violet-700' },
-      emerald: { bg: 'bg-emerald-600', text: 'text-emerald-600 dark:text-emerald-450',border: 'border-emerald-600', hoverBg: 'hover:bg-emerald-700' },
+      indigo:  { bg: 'bg-indigo-600',  text: 'text-indigo-600',  border: 'border-indigo-600',  hoverBg: 'hover:bg-indigo-700' },
+      cyan:    { bg: 'bg-cyan-600',    text: 'text-cyan-600',    border: 'border-cyan-600',    hoverBg: 'hover:bg-cyan-700' },
+      rose:    { bg: 'bg-rose-600',    text: 'text-rose-600',    border: 'border-rose-600',    hoverBg: 'hover:bg-rose-700' },
+      violet:  { bg: 'bg-violet-600',  text: 'text-violet-600',  border: 'border-violet-600',  hoverBg: 'hover:bg-violet-700' },
+      emerald: { bg: 'bg-emerald-600', text: 'text-emerald-600', border: 'border-emerald-600', hoverBg: 'hover:bg-emerald-700' },
     };
     const color = (stats.accentColor in keys ? stats.accentColor : 'indigo') as keyof typeof keys;
     return keys[color][type];
   };
 
-  // ── Loading screen ────────────────────────────────────────────────────────
+  // ── Data loading screen ───────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -235,40 +249,39 @@ export default function App() {
 
           <div className="flex flex-wrap items-center gap-4 bg-slate-900/40 p-2.5 rounded-xl border border-slate-700/30">
 
-            {/* Theme selectors */}
+            {/* Theme */}
             <div className="flex items-center gap-1.5 border-r border-slate-700/50 pr-3">
-              <Sun    onClick={() => handleUpdateStats({ preferredTheme: 'light' })}   className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'light'   ? 'text-amber-500' : 'text-slate-400'}`} title="Light Theme" />
-              <Moon   onClick={() => handleUpdateStats({ preferredTheme: 'dark' })}    className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'dark'    ? 'text-indigo-400' : 'text-slate-400'}`} title="Dark Theme" />
-              <Building2 onClick={() => handleUpdateStats({ preferredTheme: 'banking' })} className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'banking' ? 'text-cyan-400' : 'text-slate-400'}`} title="Banking Blue" />
+              <Sun       onClick={() => handleUpdateStats({ preferredTheme: 'light' })}   className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'light'   ? 'text-amber-500'  : 'text-slate-400'}`} title="Light" />
+              <Moon      onClick={() => handleUpdateStats({ preferredTheme: 'dark' })}    className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'dark'    ? 'text-indigo-400' : 'text-slate-400'}`} title="Dark" />
+              <Building2 onClick={() => handleUpdateStats({ preferredTheme: 'banking' })} className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'banking' ? 'text-cyan-400'   : 'text-slate-400'}`} title="Banking Blue" />
             </div>
 
-            {/* Accent color picker */}
+            {/* Accent */}
             <div className="flex items-center gap-1 border-r border-slate-700/50 pr-3">
-              {(['indigo', 'cyan', 'rose', 'violet', 'emerald'] as const).map(col => {
-                const colorMap = { indigo: 'bg-indigo-500', cyan: 'bg-cyan-400', rose: 'bg-rose-500', violet: 'bg-violet-500', emerald: 'bg-emerald-500' };
+              {(['indigo','cyan','rose','violet','emerald'] as const).map(col => {
+                const colorMap = { indigo:'bg-indigo-500', cyan:'bg-cyan-400', rose:'bg-rose-500', violet:'bg-violet-500', emerald:'bg-emerald-500' };
                 return (
                   <button key={col} onClick={() => handleUpdateStats({ accentColor: col })}
                     className={`w-3.5 h-3.5 rounded-full ${colorMap[col]} transition hover:scale-125 border ${stats.accentColor === col ? 'border-white scale-110' : 'border-transparent'}`}
-                    title={`${col} accent`}
+                    title={col}
                   />
                 );
               })}
             </div>
 
-            {/* XP indicator */}
+            {/* XP */}
             <div className="flex items-center gap-1 text-xs">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span className="text-slate-350 font-semibold font-mono">{stats.xp} XP</span>
+              <span className="text-slate-300 font-semibold font-mono">{stats.xp} XP</span>
             </div>
 
-            {/* User + sign out */}
+            {/* User + settings + sign out */}
             <div className="flex items-center gap-2 border-l border-slate-700/50 pl-3">
-              <span className="text-xs text-slate-400 hidden sm:block truncate max-w-[120px]">{user?.email}</span>
-              <button
-                onClick={signOut}
-                title="Sign out"
-                className="text-slate-400 hover:text-red-400 transition"
-              >
+              <span className="text-xs text-slate-400 hidden sm:block truncate max-w-[140px]">{user?.email}</span>
+              <button onClick={() => { setShowSettings(true); setResetConfirm(false); }} title="Settings" className="text-slate-400 hover:text-slate-200 transition">
+                <Settings className="w-4 h-4" />
+              </button>
+              <button onClick={signOut} title="Sign out" className="text-slate-400 hover:text-red-400 transition">
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
@@ -277,72 +290,149 @@ export default function App() {
         </div>
       </header>
 
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-indigo-400" />
+                <h2 className="text-lg font-bold text-slate-100">Settings</h2>
+              </div>
+              <button onClick={() => { setShowSettings(false); setResetConfirm(false); }} className="text-slate-400 hover:text-slate-200 transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Account section */}
+            <div className="mb-6">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Account</p>
+              <div className="bg-slate-800/60 rounded-xl px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-200 font-medium">{user?.email}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Signed in via Supabase</p>
+                </div>
+                <button
+                  onClick={signOut}
+                  className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition font-medium"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign out
+                </button>
+              </div>
+            </div>
+
+            {/* Danger zone */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Danger Zone</p>
+              <div className="bg-red-950/30 border border-red-800/40 rounded-xl p-4">
+                <div className="flex items-start gap-3 mb-4">
+                  <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-300">Reset All Data</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Permanently deletes all your study logs, habits, planner tasks, mock test attempts, and XP. This cannot be undone.
+                    </p>
+                  </div>
+                </div>
+
+                {!resetConfirm ? (
+                  <button
+                    onClick={() => setResetConfirm(true)}
+                    className="w-full py-2.5 rounded-xl border border-red-700/60 text-red-400 text-sm font-semibold hover:bg-red-900/40 transition flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Reset All Data
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-center text-amber-400 font-medium">Are you sure? This is irreversible.</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setResetConfirm(false)}
+                        className="flex-1 py-2.5 rounded-xl border border-slate-600 text-slate-300 text-sm font-semibold hover:bg-slate-800 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleReset}
+                        disabled={resetting}
+                        className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-bold transition flex items-center justify-center gap-2"
+                      >
+                        {resetting
+                          ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Resetting…</>
+                          : <><Trash2 className="w-3.5 h-3.5" /> Yes, Reset</>
+                        }
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* Main */}
       <main className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Navigation tabs */}
+        {/* Tabs */}
         <div className="flex overflow-x-auto gap-2 bg-slate-900/30 p-2 rounded-2xl border border-slate-800/65 mb-8">
           {[
-            { id: 'dashboard', label: 'Dashboard',         icon: LayoutDashboard },
-            { id: 'routine',   label: 'Daily Routine',     icon: Calendar },
-            { id: 'analytics', label: 'Consistency Audit', icon: BarChart3 },
-            { id: 'milestones',label: 'Milestones & Badges',icon: Award },
-          ].map(({ id, label, icon: Icon }) => {
-            const isActive = activeTab === id;
-            return (
-              <button key={id} onClick={() => setActiveTab(id as any)}
-                className={`py-3 px-4 rounded-xl flex items-center gap-2 text-xs font-bold font-sans uppercase tracking-wider transition duration-300 select-none shrink-0 border ${
-                  isActive ? `text-white border-transparent ${getAccentClass('bg')} shadow-lg` : 'text-slate-450 border-transparent hover:text-slate-200 hover:bg-slate-800/40'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{label}</span>
-              </button>
-            );
-          })}
+            { id: 'dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
+            { id: 'routine',    label: 'Daily Routine',      icon: Calendar },
+            { id: 'analytics',  label: 'Consistency Audit',  icon: BarChart3 },
+            { id: 'milestones', label: 'Milestones & Badges', icon: Award },
+          ].map(({ id, label, icon: Icon }) => (
+            <button key={id} onClick={() => setActiveTab(id as any)}
+              className={`py-3 px-4 rounded-xl flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition duration-300 select-none shrink-0 border ${
+                activeTab === id
+                  ? `text-white border-transparent ${getAccentClass('bg')} shadow-lg`
+                  : 'text-slate-400 border-transparent hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span>{label}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Tab content */}
+        {/* Content */}
         <div className="animate-in fade-in duration-300">
-          {activeTab === 'dashboard' && (
-            <Dashboard
-              logs={logs}
-              stats={stats}
-              onAddLog={handleAddLog}
-              onUpdateStats={handleUpdateStats}
-            />
-          )}
-          {activeTab === 'routine' && (
-            <DailyRoutine
-              stats={stats}
-              onUpdateStats={handleUpdateStats}
-              logs={logs}
-              onAddLog={handleAddLog}
-              habits={habits}
-              onUpdateHabits={handleUpdateHabits}
-            />
-          )}
-          {activeTab === 'analytics' && (
-            <PerformanceAnalytics logs={logs} />
-          )}
-          {activeTab === 'milestones' && (
-            <GamificationBadges
-              stats={stats}
-              achievements={achievements}
-              onUpdateStats={handleUpdateStats}
-              onUnlockAchievement={handleUnlockAchievement}
-            />
-          )}
+          {activeTab === 'dashboard'  && <Dashboard logs={logs} stats={stats} onAddLog={handleAddLog} onUpdateStats={handleUpdateStats} onReset={handleReset} />}
+          {activeTab === 'routine'    && <DailyRoutine stats={stats} onUpdateStats={handleUpdateStats} logs={logs} onAddLog={handleAddLog} habits={habits} onUpdateHabits={handleUpdateHabits} />}
+          {activeTab === 'analytics'  && <PerformanceAnalytics logs={logs} />}
+          {activeTab === 'milestones' && <GamificationBadges stats={stats} achievements={achievements} onUpdateStats={handleUpdateStats} onUnlockAchievement={handleUnlockAchievement} />}
         </div>
 
       </main>
 
       <footer className="border-t border-slate-800 px-6 py-6 mt-12 bg-slate-950/20 text-center">
-        <p className="text-xs text-slate-500">
-          Be A Banker • Your Personalized Banking Exam Preparation Companion © 2026
-        </p>
+        <p className="text-xs text-slate-500">Be A Banker • Your Personalized Banking Exam Preparation Companion © 2026</p>
       </footer>
 
     </div>
   );
+}
+
+// ── App — auth gate ───────────────────────────────────────────────────────────
+
+export default function App() {
+  const { session, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Building2 className="w-10 h-10 text-indigo-400 animate-pulse mx-auto mb-4" />
+          <p className="text-slate-400 text-sm font-mono">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return session ? <AppShell /> : <AuthPage />;
 }
