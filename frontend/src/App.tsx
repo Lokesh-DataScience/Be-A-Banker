@@ -54,18 +54,29 @@ function AppShell() {
             api.get('/api/attempts'),
           ]);
 
-        setStats(fetchedStats);
-        setLogs(fetchedLogs);
-        setPlanner(fetchedPlanner);
-        setAttempts(fetchedAttempts);
+        // Guard: only set if response is the expected shape
+        if (fetchedStats && !fetchedStats.detail) setStats(fetchedStats);
+        else if (fetchedStats?.detail) console.error('Stats error:', fetchedStats.detail);
 
-        if (fetchedHabits.length === 0) {
+        if (Array.isArray(fetchedLogs))     setLogs(fetchedLogs);
+        else console.error('Logs error:', fetchedLogs);
+
+        if (Array.isArray(fetchedPlanner))  setPlanner(fetchedPlanner);
+        else console.error('Planner error:', fetchedPlanner);
+
+        if (Array.isArray(fetchedAttempts)) setAttempts(fetchedAttempts);
+        else console.error('Attempts error:', fetchedAttempts);
+
+        const habitsOk = Array.isArray(fetchedHabits);
+        if (habitsOk && fetchedHabits.length === 0) {
           const seeded = await Promise.all(
             INITIAL_HABITS.map((h: Habit) => api.post('/api/habits', h))
           );
-          setHabits(seeded);
-        } else {
+          setHabits(seeded.filter(Boolean));
+        } else if (habitsOk) {
           setHabits(fetchedHabits);
+        } else {
+          setHabits(INITIAL_HABITS);
         }
       } catch (err) {
         console.error('Bootstrap failed:', err);
