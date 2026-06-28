@@ -1,8 +1,7 @@
-// App.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2, LayoutDashboard, Calendar, Award, BarChart3, Sparkles, Sun, Moon,
-  LogOut, Settings, Trash2, X, AlertTriangle, Loader2,
+  LogOut, Settings, Trash2, X, AlertTriangle, Loader2, BookOpen,
 } from 'lucide-react';
 
 import { StudyLog, UserStats, PlannerDay, AttemptResult, Achievement, Habit } from './types';
@@ -15,6 +14,7 @@ import Dashboard from './components/Dashboard';
 import DailyRoutine from './components/DailyRoutine';
 import PerformanceAnalytics from './components/PerformanceAnalytics';
 import GamificationBadges from './components/GamificationBadges';
+import WeeklyPlanner from './components/WeeklyPlanner';
 
 // ── Default stats ────────────────────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ function AppShell() {
   const [attempts,     setAttempts]     = useState<AttemptResult[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>(INITIAL_ACHIEVEMENTS);
   const [habits,       setHabits]       = useState<Habit[]>([]);
-  const [activeTab,      setActiveTab]      = useState<'dashboard' | 'routine' | 'analytics' | 'milestones'>('dashboard');
+  const [activeTab,      setActiveTab]      = useState<'dashboard' | 'routine' | 'planner' | 'analytics' | 'milestones'>('dashboard');
   const [showSettings,   setShowSettings]   = useState(false);
   const [resetConfirm,   setResetConfirm]   = useState(false);
   const [resetting,      setResetting]      = useState(false);
@@ -45,12 +45,11 @@ function AppShell() {
   // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!session) {
-      // Clear all state when user logs out or switches account
+      // Clear all state when logged out or switching accounts
       setLogs([]);
       setStats(DEFAULT_STATS);
       setPlanner([]);
       setAttempts([]);
-      setAchievements(INITIAL_ACHIEVEMENTS);
       setHabits([]);
       setLoading(true);
       return;
@@ -79,6 +78,19 @@ function AppShell() {
 
         if (Array.isArray(fetchedAttempts)) setAttempts(fetchedAttempts);
         else console.error('Attempts error:', fetchedAttempts);
+
+        const habitsOk = Array.isArray(fetchedHabits);
+        if (habitsOk && fetchedHabits.length === 0) {
+          const seeded = await Promise.all(
+            INITIAL_HABITS.map((h: Habit) => api.post('/api/habits', h))
+          );
+          setHabits(seeded.filter(Boolean));
+        } else if (habitsOk) {
+          setHabits(fetchedHabits);
+        } else {
+          console.error('Habits error:', fetchedHabits);
+          setHabits(INITIAL_HABITS);
+        }
 
         const habitsOk = Array.isArray(fetchedHabits);
         if (habitsOk && fetchedHabits.length === 0) {
@@ -133,23 +145,20 @@ function AppShell() {
 
   const handleUpdateHabits = useCallback(async (updated: Habit[]) => {
     setHabits(prev => {
-      // sync to backend using the actual previous state, not stale closure
-      const prevHabits = prev;
-      (async () => {
-        for (const h of updated) {
-          const prevH = prevHabits.find(p => p.id === h.id);
-          if (!prevH) {
-            try { await api.post('/api/habits', h); } catch (e) { console.error(e); }
-          } else if (JSON.stringify(prevH.completedDates) !== JSON.stringify(h.completedDates)) {
-            try { await api.patch(`/api/habits/${h.id}/complete`, { completedDates: h.completedDates }); } catch (e) { console.error(e); }
-          }
+      // Fire API calls based on diff against current state (not stale closure)
+      for (const h of updated) {
+        const old = prev.find(p => p.id === h.id);
+        if (!old) {
+          api.post('/api/habits', h).catch(console.error);
+        } else if (JSON.stringify(old.completedDates) !== JSON.stringify(h.completedDates)) {
+          api.patch(`/api/habits/${h.id}/complete`, { completedDates: h.completedDates }).catch(console.error);
         }
-        for (const prevH of prevHabits) {
-          if (!updated.find(h => h.id === prevH.id)) {
-            try { await api.delete(`/api/habits/${prevH.id}`); } catch (e) { console.error(e); }
-          }
+      }
+      for (const old of prev) {
+        if (!updated.find(h => h.id === old.id)) {
+          api.delete(`/api/habits/${old.id}`).catch(console.error);
         }
-      })();
+      }
       return updated;
     });
   }, []);
@@ -266,9 +275,9 @@ function AppShell() {
 
             {/* Theme */}
             <div className="flex items-center gap-1.5 border-r border-slate-700/50 pr-3">
-              <Sun       onClick={() => handleUpdateStats({ preferredTheme: 'light' })}   className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'light'   ? 'text-amber-500'  : 'text-slate-400'}`} aria-label="Light" />
-              <Moon      onClick={() => handleUpdateStats({ preferredTheme: 'dark' })}    className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'dark'    ? 'text-indigo-400' : 'text-slate-400'}`} aria-label="Dark" />
-              <Building2 onClick={() => handleUpdateStats({ preferredTheme: 'banking' })} className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'banking' ? 'text-cyan-400'   : 'text-slate-400'}`} aria-label="Banking Blue" />
+              <Sun       onClick={() => handleUpdateStats({ preferredTheme: 'light' })}   className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'light'   ? 'text-amber-500'  : 'text-slate-400'}`} title="Light" />
+              <Moon      onClick={() => handleUpdateStats({ preferredTheme: 'dark' })}    className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'dark'    ? 'text-indigo-400' : 'text-slate-400'}`} title="Dark" />
+              <Building2 onClick={() => handleUpdateStats({ preferredTheme: 'banking' })} className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'banking' ? 'text-cyan-400'   : 'text-slate-400'}`} title="Banking Blue" />
             </div>
 
             {/* Accent */}
@@ -399,6 +408,7 @@ function AppShell() {
           {[
             { id: 'dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
             { id: 'routine',    label: 'Daily Routine',      icon: Calendar },
+            { id: 'planner',    label: 'Weekly Planner',     icon: BookOpen },
             { id: 'analytics',  label: 'Consistency Audit',  icon: BarChart3 },
             { id: 'milestones', label: 'Milestones & Badges', icon: Award },
           ].map(({ id, label, icon: Icon }) => (
@@ -419,6 +429,7 @@ function AppShell() {
         <div className="animate-in fade-in duration-300">
           {activeTab === 'dashboard'  && <Dashboard logs={logs} stats={stats} onAddLog={handleAddLog} onUpdateStats={handleUpdateStats} onReset={handleReset} />}
           {activeTab === 'routine'    && <DailyRoutine stats={stats} onUpdateStats={handleUpdateStats} logs={logs} onAddLog={handleAddLog} habits={habits} onUpdateHabits={handleUpdateHabits} />}
+          {activeTab === 'planner'    && <WeeklyPlanner planner={planner} onUpdatePlanner={handleUpdatePlanner} />}
           {activeTab === 'analytics'  && <PerformanceAnalytics logs={logs} />}
           {activeTab === 'milestones' && <GamificationBadges stats={stats} achievements={achievements} onUpdateStats={handleUpdateStats} onUnlockAchievement={handleUnlockAchievement} />}
         </div>
