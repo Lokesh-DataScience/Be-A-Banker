@@ -44,7 +44,17 @@ function AppShell() {
 
   // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!session) return;  // wait until Supabase has restored the session
+    if (!session) {
+      // Clear all state when user logs out or switches account
+      setLogs([]);
+      setStats(DEFAULT_STATS);
+      setPlanner([]);
+      setAttempts([]);
+      setAchievements(INITIAL_ACHIEVEMENTS);
+      setHabits([]);
+      setLoading(true);
+      return;
+    }
 
     async function bootstrap() {
       try {
@@ -122,21 +132,27 @@ function AppShell() {
   }, []);
 
   const handleUpdateHabits = useCallback(async (updated: Habit[]) => {
-    setHabits(updated);
-    for (const h of updated) {
-      const prev = habits.find(p => p.id === h.id);
-      if (!prev) {
-        try { await api.post('/api/habits', h); } catch (e) { console.error(e); }
-      } else if (JSON.stringify(prev.completedDates) !== JSON.stringify(h.completedDates)) {
-        try { await api.patch(`/api/habits/${h.id}/complete`, { completedDates: h.completedDates }); } catch (e) { console.error(e); }
-      }
-    }
-    for (const prev of habits) {
-      if (!updated.find(h => h.id === prev.id)) {
-        try { await api.delete(`/api/habits/${prev.id}`); } catch (e) { console.error(e); }
-      }
-    }
-  }, [habits]);
+    setHabits(prev => {
+      // sync to backend using the actual previous state, not stale closure
+      const prevHabits = prev;
+      (async () => {
+        for (const h of updated) {
+          const prevH = prevHabits.find(p => p.id === h.id);
+          if (!prevH) {
+            try { await api.post('/api/habits', h); } catch (e) { console.error(e); }
+          } else if (JSON.stringify(prevH.completedDates) !== JSON.stringify(h.completedDates)) {
+            try { await api.patch(`/api/habits/${h.id}/complete`, { completedDates: h.completedDates }); } catch (e) { console.error(e); }
+          }
+        }
+        for (const prevH of prevHabits) {
+          if (!updated.find(h => h.id === prevH.id)) {
+            try { await api.delete(`/api/habits/${prevH.id}`); } catch (e) { console.error(e); }
+          }
+        }
+      })();
+      return updated;
+    });
+  }, []);
 
   const handleUpdatePlanner = useCallback(async (updated: PlannerDay[]) => {
     setPlanner(updated);
