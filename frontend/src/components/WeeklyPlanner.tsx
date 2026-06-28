@@ -79,7 +79,7 @@ export default function WeeklyPlanner({ planner, onUpdatePlanner }: WeeklyPlanne
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-blue-950 p-6 rounded-2xl border border-slate-800 shadow-xl">
+      <div className="bg-linear-to-r from-indigo-950 via-slate-900 to-blue-950 p-6 rounded-2xl border border-slate-800 shadow-xl">
         <div className="flex items-center gap-3 mb-1">
           <Calendar className="w-5 h-5 text-indigo-400" />
           <h2 className="text-xl font-bold text-slate-100 uppercase tracking-widest">Weekly Planner</h2>

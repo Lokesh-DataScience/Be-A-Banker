@@ -88,19 +88,6 @@ function AppShell() {
         } else if (habitsOk) {
           setHabits(fetchedHabits);
         } else {
-          console.error('Habits error:', fetchedHabits);
-          setHabits(INITIAL_HABITS);
-        }
-
-        const habitsOk = Array.isArray(fetchedHabits);
-        if (habitsOk && fetchedHabits.length === 0) {
-          const seeded = await Promise.all(
-            INITIAL_HABITS.map((h: Habit) => api.post('/api/habits', h))
-          );
-          setHabits(seeded.filter(Boolean));
-        } else if (habitsOk) {
-          setHabits(fetchedHabits);
-        } else {
           setHabits(INITIAL_HABITS);
         }
       } catch (err) {
@@ -275,9 +262,9 @@ function AppShell() {
 
             {/* Theme */}
             <div className="flex items-center gap-1.5 border-r border-slate-700/50 pr-3">
-              <Sun       onClick={() => handleUpdateStats({ preferredTheme: 'light' })}   className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'light'   ? 'text-amber-500'  : 'text-slate-400'}`} title="Light" />
-              <Moon      onClick={() => handleUpdateStats({ preferredTheme: 'dark' })}    className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'dark'    ? 'text-indigo-400' : 'text-slate-400'}`} title="Dark" />
-              <Building2 onClick={() => handleUpdateStats({ preferredTheme: 'banking' })} className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'banking' ? 'text-cyan-400'   : 'text-slate-400'}`} title="Banking Blue" />
+              <Sun       onClick={() => handleUpdateStats({ preferredTheme: 'light' })}   className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'light'   ? 'text-amber-500'  : 'text-slate-400'}`} aria-label="Light" />
+              <Moon      onClick={() => handleUpdateStats({ preferredTheme: 'dark' })}    className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'dark'    ? 'text-indigo-400' : 'text-slate-400'}`} aria-label="Dark" />
+              <Building2 onClick={() => handleUpdateStats({ preferredTheme: 'banking' })} className={`w-4 h-4 cursor-pointer hover:scale-110 transition ${stats.preferredTheme === 'banking' ? 'text-cyan-400'   : 'text-slate-400'}`} aria-label="Banking Blue" />
             </div>
 
             {/* Accent */}
