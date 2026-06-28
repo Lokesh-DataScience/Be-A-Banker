@@ -31,6 +31,7 @@ export default function DailyRoutine({
   const [customDuration, setCustomDuration] = useState('30');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Interactive Vault State (Helper cards inside Habits list)
   const [vocabIndex, setVocabIndex] = useState(0);
@@ -71,6 +72,7 @@ export default function DailyRoutine({
 
   const handleDeleteHabit = (id: string) => {
     onUpdateHabits(habits.filter(h => h.id !== id));
+    setConfirmDeleteId(null);
   };
 
   // Check off or Uncheck a habit
@@ -289,8 +291,8 @@ export default function DailyRoutine({
                           </div>
                         </div>
 
-                        {/* Complete Status text */}
-                        <div>
+                        {/* Right side: complete status + delete */}
+                        <div className="flex items-center gap-2">
                           {done ? (
                             <span className="text-xs text-emerald-400 font-mono font-bold uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded">
                               Complete
@@ -301,6 +303,32 @@ export default function DailyRoutine({
                               className="text-xs text-slate-400 hover:text-emerald-400 font-semibold bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded transition"
                             >
                               Check Off
+                            </button>
+                          )}
+
+                          {/* Delete button */}
+                          {confirmDeleteId === habit.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleDeleteHabit(habit.id)}
+                                className="text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded transition"
+                              >
+                                Yes
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="text-[10px] font-bold text-slate-400 hover:text-slate-200 bg-slate-700 px-2 py-1 rounded transition"
+                              >
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteId(habit.id)}
+                              className="text-slate-600 hover:text-red-400 transition p-1 rounded hover:bg-red-400/10"
+                              title="Delete habit"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
