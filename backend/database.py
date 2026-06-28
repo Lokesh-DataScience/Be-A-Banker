@@ -1,3 +1,4 @@
+# database.py
 import os
 from sqlalchemy import create_engine, Column, String, Integer, Float, Boolean, JSON, ForeignKey, text
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship

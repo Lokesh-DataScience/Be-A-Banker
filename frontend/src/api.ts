@@ -20,9 +20,8 @@ async function authHeaders(): Promise<HeadersInit> {
 async function safeFetch(url: string, options: RequestInit) {
   const res = await fetch(url, options);
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    console.error(`API ${options.method ?? 'GET'} ${url} →`, res.status, err);
-    return err; // return error object — callers guard with Array.isArray / .detail
+    const err = await res.json();
+    throw new Error(err.detail ?? res.statusText);
   }
   return res.json().catch(() => ({}));
 }

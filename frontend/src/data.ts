@@ -1,3 +1,4 @@
+// data.ts
 import { FormulaCard, VocabularyWord, PuzzleChallenge, MockTest, Achievement, Habit } from './types';
 
 export const INITIAL_FORMULAS: FormulaCard[] = [

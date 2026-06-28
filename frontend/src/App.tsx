@@ -1,3 +1,4 @@
+// App.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2, LayoutDashboard, Calendar, Award, BarChart3, Sparkles, Sun, Moon,

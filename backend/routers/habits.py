@@ -1,3 +1,4 @@
+#habits.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -31,7 +32,8 @@ def create_habit(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
-    if db.query(HabitModel).filter_by(id=body.id).first():
+    existing = db.query(HabitModel).filter_by(id=body.id,user_id=current_user.id).first()
+    if existing:
         raise HTTPException(status_code=409, detail="Habit already exists.")
     row = HabitModel(
         id=body.id, user_id=current_user.id, name=body.name,
