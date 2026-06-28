@@ -5,7 +5,7 @@ from typing import List
 from database import get_db, HabitModel, UserModel
 from dependencies import get_current_user
 from schemas import Habit, HabitCompletionUpdate
-
+import uuid
 router = APIRouter()
 
 
@@ -32,19 +32,21 @@ def create_habit(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
-    existing = db.query(HabitModel).filter_by(id=body.id,user_id=current_user.id).first()
-    if existing:
-        raise HTTPException(status_code=409, detail="Habit already exists.")
     row = HabitModel(
-        id=body.id, user_id=current_user.id, name=body.name,
-        subject=body.subject, type=body.type,
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        name=body.name,
+        subject=body.subject,
+        type=body.type,
         duration_minutes=body.durationMinutes,
         completed_dates=body.completedDates,
         is_custom=body.isCustom,
     )
+
     db.add(row)
     db.commit()
     db.refresh(row)
+
     return _row_to_schema(row)
 
 
