@@ -117,7 +117,7 @@ export default function Dashboard({ logs, stats, onAddLog, onUpdateStats, onRese
   return (
     <div id="dashboard-tab" className="space-y-6">
       {/* Header and Streak summary */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-linear-to-r from-blue-950 via-slate-900 to-indigo-950 text-white p-6 rounded-2xl border border-slate-800 shadow-xl relative overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 text-white p-6 rounded-2xl border border-slate-800 shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div>
           <span className="bg-cyan-500/20 text-cyan-400 text-xs px-3 py-1 rounded-full font-mono uppercase tracking-widest font-semibold border border-cyan-500/30">
@@ -132,7 +132,7 @@ export default function Dashboard({ logs, stats, onAddLog, onUpdateStats, onRese
         </div>
 
         {/* Level and XP summary card */}
-        <div className="flex items-center gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 backdrop-blur-sm self-start md:self-auto min-w-55">
+        <div className="flex items-center gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 backdrop-blur-sm self-start md:self-auto min-w-[220px]">
           <div className="bg-amber-500/20 p-3 rounded-lg text-amber-500 border border-amber-500/30">
             <Flame className="w-8 h-8 fill-amber-500 animate-pulse" />
           </div>
@@ -147,7 +147,7 @@ export default function Dashboard({ logs, stats, onAddLog, onUpdateStats, onRese
       {/* Main Core Widgets (Progress & Subject Distribution) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Today's Progress Ring Widget */}
-        <div id="progress-goal-ring" className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-between min-h-75">
+        <div id="progress-goal-ring" className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-between min-h-[300px]">
           <div className="w-full">
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <Clock className="w-5 h-5 text-indigo-500" /> Today's Target
@@ -205,7 +205,7 @@ export default function Dashboard({ logs, stats, onAddLog, onUpdateStats, onRese
         {/* Total stats cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:col-span-2">
           {/* Total Study Hours */}
-          <div className="bg-linear-to-br from-indigo-50 to-white dark:from-slate-900/40 dark:to-slate-950 p-6 rounded-2xl border border-indigo-100/50 dark:border-slate-800/80 shadow-sm flex flex-col justify-between">
+          <div className="bg-gradient-to-br from-indigo-50 to-white dark:from-slate-900/40 dark:to-slate-950 p-6 rounded-2xl border border-indigo-100/50 dark:border-slate-800/80 shadow-sm flex flex-col justify-between">
             <div>
               <div className="bg-indigo-500/10 w-10 h-10 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                 <Clock className="w-5 h-5" />
@@ -219,7 +219,7 @@ export default function Dashboard({ logs, stats, onAddLog, onUpdateStats, onRese
           </div>
 
           {/* Practice Questions Card */}
-          <div className="bg-linear-to-br from-emerald-50 to-white dark:from-slate-900/40 dark:to-slate-950 p-6 rounded-2xl border border-emerald-100/50 dark:border-slate-800/80 shadow-sm flex flex-col justify-between">
+          <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-slate-900/40 dark:to-slate-950 p-6 rounded-2xl border border-emerald-100/50 dark:border-slate-800/80 shadow-sm flex flex-col justify-between">
             <div>
               <div className="bg-emerald-500/10 w-10 h-10 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                 <BookOpen className="w-5 h-5" />
@@ -235,7 +235,7 @@ export default function Dashboard({ logs, stats, onAddLog, onUpdateStats, onRese
           </div>
 
           {/* Level Progress Rank badge info */}
-          <div className="bg-linear-to-br from-amber-50 to-white dark:from-slate-900/40 dark:to-slate-950 p-6 rounded-2xl border border-amber-100/50 dark:border-slate-800/80 shadow-sm flex flex-col justify-between col-span-1 sm:col-span-2">
+          <div className="bg-gradient-to-br from-amber-50 to-white dark:from-slate-900/40 dark:to-slate-950 p-6 rounded-2xl border border-amber-100/50 dark:border-slate-800/80 shadow-sm flex flex-col justify-between col-span-1 sm:col-span-2">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <span className="text-xs text-amber-600 dark:text-amber-400 font-mono font-bold uppercase tracking-wide">Banking Progression</span>
@@ -340,16 +340,16 @@ export default function Dashboard({ logs, stats, onAddLog, onUpdateStats, onRese
           <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-800/80">
             <span>Missed</span>
             <span className="w-2.5 h-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm"></span>
-            <span className="w-2.5 h-2.5 bg-blue-200 dark:bg-blue-900/50 rounded-sm"></span>
-            <span className="w-2.5 h-2.5 bg-blue-400 dark:bg-blue-600 rounded-sm"></span>
-            <span className="w-2.5 h-2.5 bg-blue-600 dark:bg-blue-400 rounded-sm"></span>
+            <span className="w-2.5 h-2.5 bg-red-300 dark:bg-red-900/60 rounded-sm"></span>
+            <span className="w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-600/70 rounded-sm"></span>
+            <span className="w-2.5 h-2.5 bg-green-500 dark:bg-green-500 rounded-sm"></span>
             <span>Intense</span>
           </div>
         </div>
 
         {/* 28-day horizontal cell grid */}
         <div className="overflow-x-auto">
-          <div className="min-w-160 grid grid-cols-7 gap-2.5 py-2">
+          <div className="min-w-[640px] grid grid-cols-7 gap-2.5 py-2">
             {heatmapDays.map((day, idx) => {
               // Decide background color depending on study hours logged
               let bgClass = "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700/50 hover:scale-105 active:scale-95";
@@ -357,11 +357,17 @@ export default function Dashboard({ logs, stats, onAddLog, onUpdateStats, onRese
               if (day.minutes > 0) {
                 minutesLabel = `${day.minutes} minutes`;
                 if (day.minutes < 30) {
-                  bgClass = "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40 hover:scale-105 active:scale-95";
+                  // Low intensity — red
+                  bgClass = "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40 hover:scale-105 active:scale-95";
                 } else if (day.minutes < 60) {
-                  bgClass = "bg-blue-300 dark:bg-blue-800/70 text-blue-800 dark:text-blue-200 border border-blue-400 dark:border-blue-700/50 hover:scale-105 active:scale-95";
+                  // Medium intensity — yellow/amber
+                  bgClass = "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-800/50 hover:scale-105 active:scale-95";
+                } else if (day.minutes < 120) {
+                  // Good intensity — light green
+                  bgClass = "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-800/50 hover:scale-105 active:scale-95";
                 } else {
-                  bgClass = "bg-blue-600 dark:bg-blue-500 text-white border border-blue-700 dark:border-blue-400 hover:scale-105 active:scale-95";
+                  // High intensity — strong green
+                  bgClass = "bg-green-500 dark:bg-green-600 text-white border border-green-600 dark:border-green-500 hover:scale-105 active:scale-95";
                 }
               }
 
