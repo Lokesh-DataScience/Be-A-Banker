@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   BarChart3, CheckCircle2, AlertTriangle, Clock, TrendingUp, Sparkles, Calendar, BookOpen, HeartPulse
 } from 'lucide-react';
@@ -6,6 +6,186 @@ import { StudyLog } from '../types';
 
 interface PerformanceAnalyticsProps {
   logs: StudyLog[];
+}
+
+// ── Histogram helpers ─────────────────────────────────────────────────────────
+
+function getWeeklyBars(logs: StudyLog[]) {
+  const bars = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const mins = logs.filter(l => l.date === dateStr).reduce((a, l) => a + l.durationMinutes, 0);
+    bars.push({
+      label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      sublabel: `${d.getDate()}`,
+      hours: +(mins / 60).toFixed(1),
+      mins,
+      isToday: i === 0,
+    });
+  }
+  return bars;
+}
+
+function getMonthlyBars(logs: StudyLog[]) {
+  const bars = [];
+  for (let i = 3; i >= 0; i--) {
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - (i * 7 + 6));
+    const weekEnd = new Date();
+    weekEnd.setDate(weekEnd.getDate() - i * 7);
+    const mins = logs.filter(l => {
+      const d = new Date(l.date);
+      return d >= weekStart && d <= weekEnd;
+    }).reduce((a, l) => a + l.durationMinutes, 0);
+    bars.push({
+      label: `Wk ${4 - i}`,
+      sublabel: `${weekStart.getDate()}/${weekStart.getMonth() + 1}`,
+      hours: +(mins / 60).toFixed(1),
+      mins,
+      isToday: i === 0,
+    });
+  }
+  return bars;
+}
+
+function Histogram({ logs }: { logs: StudyLog[] }) {
+  const [view, setView] = useState<'weekly' | 'monthly'>('weekly');
+  const bars = view === 'weekly' ? getWeeklyBars(logs) : getMonthlyBars(logs);
+  const maxHours = Math.max(...bars.map(b => b.hours), 1);
+
+  const totalHours = bars.reduce((a, b) => a + b.hours, 0).toFixed(1);
+  const avgHours   = (bars.reduce((a, b) => a + b.hours, 0) / bars.length).toFixed(1);
+  const bestDay    = bars.reduce((a, b) => b.hours > a.hours ? b : a, bars[0]);
+
+  const subjectColor: Record<string, string> = {
+    Quant:     'bg-blue-500',
+    Reasoning: 'bg-indigo-500',
+    English:   'bg-rose-500',
+  };
+
+  // Per-bar subject breakdown (stacked)
+  const getBreakdown = (dateLabel: string) => {
+    const filter = view === 'weekly'
+      ? (l: StudyLog) => {
+          const d = new Date(l.date);
+          return d.toLocaleDateString('en-US', { weekday: 'short' }) === dateLabel;
+        }
+      : () => true; // monthly bars already aggregated
+    return ['Quant', 'Reasoning', 'English'].map(s => ({
+      subject: s,
+      mins: logs.filter(l => l.subject === s && filter(l)).reduce((a, l) => a + l.durationMinutes, 0),
+    }));
+  };
+
+  return (
+    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5">
+
+      {/* Header row */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-indigo-400" />
+            Study Hours
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {view === 'weekly' ? 'Last 7 days' : 'Last 4 weeks'} · based on your study logs
+          </p>
+        </div>
+
+        {/* Toggle */}
+        <div className="flex gap-1 bg-slate-800 p-1 rounded-xl">
+          {(['weekly', 'monthly'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                view === v ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {v === 'weekly' ? 'Weekly' : 'Monthly'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Total Hours', value: `${totalHours}h`, color: 'text-indigo-400' },
+          { label: 'Daily Avg',   value: `${avgHours}h`,   color: 'text-emerald-400' },
+          { label: 'Best Day',    value: `${bestDay?.hours}h`, color: 'text-amber-400' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-slate-800/60 rounded-xl p-3 text-center border border-slate-700/50">
+            <p className={`text-lg font-black font-mono ${color}`}>{value}</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Histogram bars */}
+      <div className="flex items-end justify-between gap-2 h-40 pt-2">
+        {bars.map((bar, i) => {
+          const heightPct = maxHours > 0 ? (bar.hours / maxHours) * 100 : 0;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+
+              {/* Tooltip */}
+              <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                <div className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-center shadow-lg min-w-16">
+                  <p className="text-xs font-bold text-slate-100">{bar.hours}h</p>
+                  <p className="text-[10px] text-slate-400">{bar.mins} mins</p>
+                </div>
+                <div className="w-2 h-2 bg-slate-800 border-r border-b border-slate-700 rotate-45 -mt-1" />
+              </div>
+
+              {/* Bar */}
+              <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
+                <div
+                  className={`w-full rounded-t-lg transition-all duration-500 ${
+                    bar.isToday
+                      ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20'
+                      : bar.hours > 0
+                      ? 'bg-slate-600 group-hover:bg-indigo-600/70'
+                      : 'bg-slate-800/60'
+                  }`}
+                  style={{ height: `${Math.max(heightPct, bar.hours > 0 ? 4 : 2)}%` }}
+                />
+              </div>
+
+              {/* Labels */}
+              <p className={`text-[10px] font-bold ${bar.isToday ? 'text-indigo-400' : 'text-slate-500'}`}>
+                {bar.label}
+              </p>
+              <p className="text-[9px] text-slate-600 font-mono">{bar.sublabel}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Y-axis hint */}
+      <div className="flex justify-between text-[9px] text-slate-600 font-mono -mt-2">
+        <span>0h</span>
+        <span>{(maxHours / 2).toFixed(1)}h</span>
+        <span>{maxHours.toFixed(1)}h</span>
+      </div>
+
+      {/* Subject legend */}
+      <div className="flex items-center gap-4 pt-1 border-t border-slate-800">
+        {['Quant', 'Reasoning', 'English'].map(s => {
+          const mins = logs.filter(l => l.subject === s).reduce((a, l) => a + l.durationMinutes, 0);
+          return (
+            <div key={s} className="flex items-center gap-1.5 text-xs text-slate-400">
+              <span className={`w-2.5 h-2.5 rounded-full ${subjectColor[s]}`} />
+              <span>{s}</span>
+              <span className="font-mono text-slate-500">{(mins / 60).toFixed(1)}h</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function PerformanceAnalytics({ logs }: PerformanceAnalyticsProps) {
@@ -65,6 +245,9 @@ export default function PerformanceAnalytics({ logs }: PerformanceAnalyticsProps
 
   return (
     <div id="analytics-tab" className="space-y-6">
+
+      {/* Study Hours Histogram */}
+      <Histogram logs={logs} />
       
       {/* Title block */}
       <div className="bg-slate-950/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
