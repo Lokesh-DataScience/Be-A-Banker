@@ -125,7 +125,7 @@ function Histogram({ logs }: { logs: StudyLog[] }) {
       </div>
 
       {/* Histogram bars */}
-      <div className="flex items-end justify-between gap-2 h-40 pt-2">
+      <div className="flex items-end justify-between gap-2 h-40">
         {bars.map((bar, i) => {
           const heightPct = maxHours > 0 ? (bar.hours / maxHours) * 100 : 0;
           return (
@@ -140,25 +140,26 @@ function Histogram({ logs }: { logs: StudyLog[] }) {
                 <div className="w-2 h-2 bg-slate-800 border-r border-b border-slate-700 rotate-45 -mt-1" />
               </div>
 
-              {/* Bar */}
-              <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
+              {/* Bar track */}
+              <div className="w-full relative bg-slate-800/40 rounded-t-lg" style={{ height: '120px' }}>
+                {/* Actual bar — grows from bottom */}
                 <div
-                  className={`w-full rounded-t-lg transition-all duration-500 ${
+                  className={`absolute bottom-0 left-0 right-0 rounded-t-lg transition-all duration-700 ${
                     bar.isToday
-                      ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20'
+                      ? 'bg-indigo-500 shadow-lg shadow-indigo-500/30'
                       : bar.hours > 0
-                      ? 'bg-slate-600 group-hover:bg-indigo-600/70'
-                      : 'bg-slate-800/60'
+                      ? 'bg-slate-500 group-hover:bg-indigo-500/70'
+                      : 'bg-slate-800'
                   }`}
-                  style={{ height: `${Math.max(heightPct, bar.hours > 0 ? 4 : 2)}%` }}
+                  style={{ height: `${Math.max(heightPct, bar.hours > 0 ? 5 : 0)}%` }}
                 />
               </div>
 
               {/* Labels */}
-              <p className={`text-[10px] font-bold ${bar.isToday ? 'text-indigo-400' : 'text-slate-500'}`}>
+              <p className={`text-[10px] font-bold leading-tight ${bar.isToday ? 'text-indigo-400' : 'text-slate-500'}`}>
                 {bar.label}
               </p>
-              <p className="text-[9px] text-slate-600 font-mono">{bar.sublabel}</p>
+              <p className="text-[9px] text-slate-600 font-mono leading-tight">{bar.sublabel}</p>
             </div>
           );
         })}
